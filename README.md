@@ -11,7 +11,8 @@ checked it's done the right thing.
 The main program dove_to_josm.py takes the names of places to start
 and end at, and for each ringable full-circle tower in that range,
 directs a running JOSM (with remote control enabled) to download the
-area around the tower and zoom to it; it prints a line showing:
+area around the tower and zoom to it; copies the ID to the clipboard;
+it prints a line showing:
 
   * progress through your selected tower list
   * the tower ID (for you to add as `ref:dove`)
