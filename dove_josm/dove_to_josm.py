@@ -5,6 +5,7 @@ import csv
 import math
 import os
 import requests
+import pyperclip
 
 R_EARTH = 6378000               # metres
 
@@ -33,6 +34,7 @@ def dove_josm_drive(tower_list):
             latitude = float(tower['Lat'])
             longitude = float(tower['Long'])
             tower_id = tower['TowerID']
+            pyperclip.copy(tower_id)
             # see https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-from-old-n-meters
             dx = 100
             dy = 100
