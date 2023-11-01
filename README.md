@@ -5,7 +5,7 @@ Assorted code related to change-ringing.
 
 If your downloaded Dove CSV file has some rubbish bytes at the start,
 run strip_csv.py on it and move the resulting
-"~/Downloads/dove-fixed.csv" into "~/Downloads/dove.csv" once you've
+"\~/Downloads/dove-fixed.csv" into "\~/Downloads/dove.csv" once you've
 checked it's done the right thing.
 
 The main program dove_to_josm.py takes the names of places to start
