@@ -100,10 +100,10 @@ def dove_josm_drive(tower_list, bb_size: float):
 def dove_josm_main(start, end, towers_file, done, match, bounding_box: float, around, within: float):
     with open(os.path.expanduser(towers_file)) as dovestream:
         towers = list(csv.DictReader(dovestream))
-    already_done = []
+    already_done = set()
     if done:
         with open(os.path.expanduser(done)) as donestream:
-            already_done = [tower["Dove ID"] for tower in csv.DictReader(donestream)]
+            already_done = set(tower["Dove ID"] for tower in csv.DictReader(donestream))
     if end:
         end_index = index_after(towers, end, 'Place')
         if end_index is None:
