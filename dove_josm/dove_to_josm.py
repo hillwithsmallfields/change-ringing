@@ -8,10 +8,22 @@ import re
 import requests
 import pyperclip
 
+"""JOSM remote control driver for Dove's bell-ringing database.
+
+JOSM is directed to each tower location in turn, with the clipboard containing the Dove ID for the tower.
+
+There are several ways to select the towers:
+
+  * by --start and --end in alphebetical order
+  * by --match on a regexp
+  * within a distance of a place named in the Dove data
+
+The towers selected are the intersection of all of these."""
+
 R_EARTH = 6378000               # metres
 
 def get_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="JOSM remote control driver for Dove's bell-ringing database.")
     # Tower selection
     parser.add_argument("--start", "-s",
                         help="""Where to start, in alphabetical order.""")
@@ -20,21 +32,23 @@ def get_args():
     parser.add_argument("--match", "-m",
                         help="""Regexp to match place names against.""")
     parser.add_argument("--around", "-a",
-                        help="""Tower to include towers within a distance of.""")
+                        help="""Tower to include towers within a distance of.
+                        The first tower with a 'Place' equal to or after this name is used.""")
     parser.add_argument("--within", "-w", type=float,
-                        help="""Distance to use for --around.""")
+                        help="""Distance in Km to use for --around.""")
     # Data files
     parser.add_argument("--towers-file", "-t",
                         default="~/Downloads/dove.csv",
-                        help="""The location of the towers file.""")
+                        help="""The location of the towers file, as downloaded from Dove (https://dove.cccbr.org.uk/).""")
     parser.add_argument("--done", "-d",
                         default="~/ringing/doves-done.csv",
-                        help="""The location of the "done" file.""")
+                        help="""The location of the "done" file, as created by get_done_doves.py.""")
     # JOSM settings
     parser.add_argument("--bounding-box", "-b",
                         type=float,
                         default=75,
-                        help="""The size of the bounding box to set in JOSM.""")
+                        help="""The size of the bounding box (in metres) to set in JOSM.
+                        This is how much of the map is downloaded around the location given in Dove.""")
     return vars(parser.parse_args())
 
 def distance(latdeg1, londeg1, latdeg2, londeg2):

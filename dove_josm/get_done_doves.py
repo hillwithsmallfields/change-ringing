@@ -6,6 +6,8 @@ import os
 
 import overpy
 
+"""Program to fetch ref:dove data from OSM and save it with the OSM IDs for the same objects."""
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-file", "-o",
