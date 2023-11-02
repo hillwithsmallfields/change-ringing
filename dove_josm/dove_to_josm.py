@@ -19,6 +19,10 @@ def get_args():
                         help="""Where to end, in alphabetical order.""")
     parser.add_argument("--match", "-m",
                         help="""Regexp to match place names against.""")
+    parser.add_argument("--around", "-a",
+                        help="""Tower to include towers within a distance of.""")
+    parser.add_argument("--within", "-w", type=float,
+                        help="""Distance to use for --around.""")
     # Data files
     parser.add_argument("--towers-file", "-t",
                         default="~/Downloads/dove.csv",
@@ -32,6 +36,20 @@ def get_args():
                         default=75,
                         help="""The size of the bounding box to set in JOSM.""")
     return vars(parser.parse_args())
+
+def distance(latdeg1, londeg1, latdeg2, londeg2):
+    # based on https://stackoverflow.com/questions/57294120/calculating-distance-between-latitude-and-longitude-in-python
+    R = 6370
+    lat1 = math.radians(latdeg1)
+    lon1 = math.radians(londeg1)
+    lat2 = math.radians(latdeg2)
+    lon2 = math.radians(londeg2)
+
+    dlon = lon2 - lon1
+    dlat = lat2- lat1
+
+    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 def index_after(in_order, key, field):
     "Find the index of the first entry at or after the key in the sorting order."
@@ -65,7 +83,7 @@ def dove_josm_drive(tower_list, bb_size: float):
             progress += 1
             _ = input()
 
-def dove_josm_main(start, end, towers_file, done, match, bounding_box: float):
+def dove_josm_main(start, end, towers_file, done, match, bounding_box: float, around, within: float):
     with open(os.path.expanduser(towers_file)) as dovestream:
         towers = list(csv.DictReader(dovestream))
     already_done = []
@@ -89,6 +107,20 @@ def dove_josm_main(start, end, towers_file, done, match, bounding_box: float):
     towers = [tower
               for tower in towers
               if tower["TowerID"] not in already_done]
+    if around:
+        around_index = index_after(towers, around, 'Place')
+        if not around_index:
+            raise ValueError
+        around_tower = towers[around_index]
+        around_lat = float(around_tower['Lat'])
+        around_long = float(around_tower['Long'])
+        towers = [tower
+                  for tower in towers
+                  if (tower['Lat']
+                      and tower['Long']
+                      and abs(distance(float(tower['Lat']), float(tower['Long']),
+                                       around_lat, around_long))
+                      <= within)]
     print(len(towers), "towers selected")
     dove_josm_drive(towers, bb_size=bounding_box)
 
