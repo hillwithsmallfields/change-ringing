@@ -18,10 +18,13 @@ def get_args():
     parser.add_argument("--towers-file", "-t",
                         default="~/Downloads/dove.csv",
                         help="""The location of the towers file.""")
-    parser.add_argument("--bounding-box",
+    parser.add_argument("--bounding-box", "-b",
                         type=float,
                         default=75,
                         help="""The size of the bounding box to set in JOSM.""")
+    parser.add_argument("--done", "-d",
+                        default="~/ringing/doves-done.csv",
+                        help="""The location of the "done" file.""")
     return vars(parser.parse_args())
 
 def index_after(in_order, key, field):
@@ -56,9 +59,13 @@ def dove_josm_drive(tower_list, bb_size: float):
             progress += 1
             _ = input()
 
-def dove_josm_main(start, end, towers_file, bounding_box: float):
+def dove_josm_main(start, end, towers_file, done, bounding_box: float):
     with open(os.path.expanduser(towers_file)) as dovestream:
         towers = list(csv.DictReader(dovestream))
+    already_done = []
+    if done:
+        with open(os.path.expanduser(done)) as donestream:
+            already_done = [tower["Dove ID"] for tower in csv.DictReader(donestream)]
     if end:
         end_index = index_after(towers, end, 'Place')
         if end_index is None:
@@ -69,6 +76,9 @@ def dove_josm_main(start, end, towers_file, bounding_box: float):
         if start_index is None:
             raise ValueError
         towers = towers[start_index:]
+    towers = [tower
+              for tower in towers
+              if tower["TowerID"] not in already_done]
     print(len(towers), "towers selected")
     dove_josm_drive(towers, bb_size=bounding_box)
 
