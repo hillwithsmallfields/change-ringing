@@ -4,6 +4,7 @@ import argparse
 import csv
 import math
 import os
+import re
 import requests
 import pyperclip
 
@@ -11,20 +12,25 @@ R_EARTH = 6378000               # metres
 
 def get_args():
     parser = argparse.ArgumentParser()
+    # Tower selection
     parser.add_argument("--start", "-s",
                         help="""Where to start, in alphabetical order.""")
     parser.add_argument("--end", "-e",
                         help="""Where to end, in alphabetical order.""")
+    parser.add_argument("--match", "-m",
+                        help="""Regexp to match place names against.""")
+    # Data files
     parser.add_argument("--towers-file", "-t",
                         default="~/Downloads/dove.csv",
                         help="""The location of the towers file.""")
+    parser.add_argument("--done", "-d",
+                        default="~/ringing/doves-done.csv",
+                        help="""The location of the "done" file.""")
+    # JOSM settings
     parser.add_argument("--bounding-box", "-b",
                         type=float,
                         default=75,
                         help="""The size of the bounding box to set in JOSM.""")
-    parser.add_argument("--done", "-d",
-                        default="~/ringing/doves-done.csv",
-                        help="""The location of the "done" file.""")
     return vars(parser.parse_args())
 
 def index_after(in_order, key, field):
@@ -59,7 +65,7 @@ def dove_josm_drive(tower_list, bb_size: float):
             progress += 1
             _ = input()
 
-def dove_josm_main(start, end, towers_file, done, bounding_box: float):
+def dove_josm_main(start, end, towers_file, done, match, bounding_box: float):
     with open(os.path.expanduser(towers_file)) as dovestream:
         towers = list(csv.DictReader(dovestream))
     already_done = []
@@ -76,6 +82,10 @@ def dove_josm_main(start, end, towers_file, done, bounding_box: float):
         if start_index is None:
             raise ValueError
         towers = towers[start_index:]
+    if match:
+        towers = [tower
+                  for tower in towers
+                  if re.search(match, tower['Place'])]
     towers = [tower
               for tower in towers
               if tower["TowerID"] not in already_done]
