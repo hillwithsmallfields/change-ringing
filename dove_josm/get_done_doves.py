@@ -16,7 +16,7 @@ def get_args():
 
 def get_done_doves(output_file):
     api = overpy.Overpass()
-    result = api.query("""[out:json]; way ["ref:dove"]; out tags;""")
+    result = api.query("""[out:json]; nwr ["ref:dove"]; out tags;""")
     with open(os.path.expanduser(output_file), "w") as outstream:
         writer = csv.writer(outstream)
         writer.writerow(["OSM ID", "Dove ID"])
