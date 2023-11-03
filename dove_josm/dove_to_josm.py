@@ -142,7 +142,7 @@ def dove_josm_main(
             raise ValueError
         towers = towers[start_index:]
     if match:
-        towers = [towerb
+        towers = [tower
                   for tower in towers
                   if re.search(match, tower['Place'])]
     towers = [tower
@@ -176,7 +176,8 @@ def dove_josm_main(
             + ((" in %s" % county) if county else "")
             + ((" in %s diocese" % diocese) if diocese else "")
             + ((" dedicated to %s" % dedication) if dedication else "")
-            + ((" within %f km of %s" % (float(within), around)) if around else "")
+            + ((" matching %s" % match) if match else "")
+            + ((" within %g km of %s" % (float(within), around)) if around else "")
         ))
 
 if __name__ == "__main__":
