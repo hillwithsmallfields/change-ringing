@@ -88,7 +88,7 @@ def filter_by_field(towers_list, field, value):
 
 def dove_josm_drive(tower_list, bb_size: float, changeset_comment_details: str):
     """Send commands to the JOSM remote control, to bring up each tower in the tower list."""
-    count = len(tower_list)
+    count = len([t for t in tower_list if t['RingType'] == 'Full-circle ring' and t['UR'] == ""])
     progress = 1
     for tower in tower_list:
         if tower['RingType'] == 'Full-circle ring' and tower['UR'] == "":
@@ -150,7 +150,6 @@ def dove_josm_main(
         if not around_index:
             raise ValueError
         around_tower = towers[around_index]
-        print("Looking around tower", around_tower)
         around_lat = float(around_tower['Lat'])
         around_long = float(around_tower['Long'])
         towers = [tower
