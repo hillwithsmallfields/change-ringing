@@ -77,7 +77,7 @@ def index_after(in_order, key, field):
     key = key.lower()
     for i, elt in enumerate(in_order):
         if elt[field].lower() >= key:
-            return i-1
+            return i
     return None
 
 def filter_by_field(towers_list, field, value):
@@ -145,9 +145,6 @@ def dove_josm_main(
         towers = [tower
                   for tower in towers
                   if re.search(match, tower['Place'])]
-    towers = [tower
-              for tower in towers
-              if tower["TowerID"] not in already_done]
     if around:
         around_index = index_after(towers, around, 'Place')
         if not around_index:
@@ -168,6 +165,9 @@ def dove_josm_main(
                             "BareDedicn": dedication}.items():
         if value:
             towers = filter_by_field(towers, selector, value)
+    towers = [tower
+              for tower in towers
+              if tower["TowerID"] not in already_done]
     print(len(towers), "towers selected")
     dove_josm_drive(
         towers,
