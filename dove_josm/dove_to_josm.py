@@ -36,6 +36,12 @@ def get_args():
                         The first tower with a 'Place' equal to or after this name is used.""")
     parser.add_argument("--within", "-w", type=float,
                         help="""Distance in Km to use for --around.""")
+    parser.add_argument("--county",
+                        help="""Filter to towers in this county.""")
+    parser.add_argument("--diocese",
+                        help="""Filter to towers in this diocese.""")
+    parser.add_argument("--dedication",
+                        help="""Filter to towers with this dedication.""")
     # Data files
     parser.add_argument("--towers-file", "-t",
                         default="~/Downloads/dove.csv",
@@ -52,6 +58,7 @@ def get_args():
     return vars(parser.parse_args())
 
 def distance(latdeg1, londeg1, latdeg2, londeg2):
+    """Return the distance in kilometres between two points."""
     # based on https://stackoverflow.com/questions/57294120/calculating-distance-between-latitude-and-longitude-in-python
     R = 6370
     lat1 = math.radians(latdeg1)
@@ -73,7 +80,14 @@ def index_after(in_order, key, field):
             return i
     return None
 
+def filter_by_field(towers_list, field, value):
+    """Filter a tower list by a given field."""
+    return [tower
+            for tower in towers_list
+            if tower[field] == value]
+
 def dove_josm_drive(tower_list, bb_size: float):
+    """Send commands to the JOSM remote control, to bring up each tower in the tower list."""
     count = len(tower_list)
     progress = 1
     for tower in tower_list:
@@ -97,7 +111,18 @@ def dove_josm_drive(tower_list, bb_size: float):
             progress += 1
             _ = input()
 
-def dove_josm_main(start, end, towers_file, done, match, bounding_box: float, around, within: float):
+def dove_josm_main(
+        # files
+        towers_file, done,
+        # JOSM control
+        bounding_box: float,
+        # selection:
+        match,
+        start, end,
+        around, within: float,
+        county,
+        diocese,
+        dedication):
     with open(os.path.expanduser(towers_file)) as dovestream:
         towers = list(csv.DictReader(dovestream))
     already_done = set()
@@ -115,7 +140,7 @@ def dove_josm_main(start, end, towers_file, done, match, bounding_box: float, ar
             raise ValueError
         towers = towers[start_index:]
     if match:
-        towers = [tower
+        towers = [towerb
                   for tower in towers
                   if re.search(match, tower['Place'])]
     towers = [tower
@@ -135,6 +160,11 @@ def dove_josm_main(start, end, towers_file, done, match, bounding_box: float, ar
                       and abs(distance(float(tower['Lat']), float(tower['Long']),
                                        around_lat, around_long))
                       <= within)]
+    for selector, value in {"County": county,
+                            "Diocese": diocese,
+                            "BareDedicn": dedication}.items():
+        if value:
+            towers = filter_by_field(towers, selector, value)
     print(len(towers), "towers selected")
     dove_josm_drive(towers, bb_size=bounding_box)
 
