@@ -86,7 +86,7 @@ def filter_by_field(towers_list, field, value):
             for tower in towers_list
             if tower[field] == value]
 
-def dove_josm_drive(tower_list, bb_size: float):
+def dove_josm_drive(tower_list, bb_size: float, changeset_comment_details: str):
     """Send commands to the JOSM remote control, to bring up each tower in the tower list."""
     count = len(tower_list)
     progress = 1
@@ -101,12 +101,14 @@ def dove_josm_drive(tower_list, bb_size: float):
             # see https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-from-old-n-meters
             dx = bb_size/2
             dy = bb_size/2
-            bottom  = latitude - (dy / R_EARTH) * (180 / math.pi)
-            top  = latitude + (dy / R_EARTH) * (180 / math.pi)
-            left = longitude - (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180)
-            right = longitude + (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180)
             # see https://josm.openstreetmap.de/wiki/Help/RemoteControlCommands#load_and_zoom
-            requests.get("""http://127.0.0.1:8111/load_and_zoom?changeset_comment=semi-manual tagging of bell towers&changeset_source=Dove&left=%f&right=%f&bottom=%f&top=%f""" % (left, right, bottom, top))
+            requests.get("""http://127.0.0.1:8111/load_and_zoom?changeset_comment=semi-automatic tagging of bell towers%s&changeset_source=Dove&left=%f&right=%f&bottom=%f&top=%f"""
+                         % (changeset_comment_details,
+                            longitude - (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180), # left
+                            longitude + (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180), # right,
+                            latitude - (dy / R_EARTH) * (180 / math.pi), # bottom,
+                            latitude + (dy / R_EARTH) * (180 / math.pi) # top
+                            ))
             print("[% 4d/% 4d]" % (progress, count), tower_id, name, "at", latitude, longitude, "type return to continue")
             progress += 1
             _ = input()
@@ -166,7 +168,13 @@ def dove_josm_main(
         if value:
             towers = filter_by_field(towers, selector, value)
     print(len(towers), "towers selected")
-    dove_josm_drive(towers, bb_size=bounding_box)
+    dove_josm_drive(towers,
+                    bb_size=bounding_box,
+                    changeset_comment_details=(""
+                                               + ((" in %s" % county) if county else "")
+                                               + ((" in %s diocese" % diocese) if diocese else "")
+                                               + ((" dedicated to %s" % dedication) if dedication else "")
+                                               ))
 
 if __name__ == "__main__":
     dove_josm_main(**get_args())
