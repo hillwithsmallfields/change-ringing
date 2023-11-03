@@ -77,7 +77,7 @@ def index_after(in_order, key, field):
     key = key.lower()
     for i, elt in enumerate(in_order):
         if elt[field].lower() >= key:
-            return i
+            return i-1
     return None
 
 def filter_by_field(towers_list, field, value):
@@ -153,6 +153,7 @@ def dove_josm_main(
         if not around_index:
             raise ValueError
         around_tower = towers[around_index]
+        print("Looking around tower", around_tower)
         around_lat = float(around_tower['Lat'])
         around_long = float(around_tower['Long'])
         towers = [tower

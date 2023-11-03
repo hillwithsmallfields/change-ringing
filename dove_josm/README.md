@@ -24,8 +24,6 @@ best practice is to use `--around` and a name that matches a tower,
 and `--within` a suitable radius in Km.  This stops JOSM warning you
 about changesets with large bounding boxes.
 
-*NOTE the --within calculation seems to be broken*
-
 The program will direct JOSM to load and zoom to a small area
 including the first tower, and will put the Dove ID for the tower into
 the clipboard.
