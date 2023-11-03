@@ -168,13 +168,16 @@ def dove_josm_main(
         if value:
             towers = filter_by_field(towers, selector, value)
     print(len(towers), "towers selected")
-    dove_josm_drive(towers,
-                    bb_size=bounding_box,
-                    changeset_comment_details=(""
-                                               + ((" in %s" % county) if county else "")
-                                               + ((" in %s diocese" % diocese) if diocese else "")
-                                               + ((" dedicated to %s" % dedication) if dedication else "")
-                                               ))
+    dove_josm_drive(
+        towers,
+        bb_size=bounding_box,
+        changeset_comment_details=(
+            ""
+            + ((" in %s" % county) if county else "")
+            + ((" in %s diocese" % diocese) if diocese else "")
+            + ((" dedicated to %s" % dedication) if dedication else "")
+            + ((" within %f km of %s" % (float(within), around)) if around else "")
+        ))
 
 if __name__ == "__main__":
     dove_josm_main(**get_args())
