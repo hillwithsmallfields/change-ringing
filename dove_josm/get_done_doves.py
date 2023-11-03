@@ -20,8 +20,10 @@ def get_done_doves(output_file):
     with open(os.path.expanduser(output_file), "w") as outstream:
         writer = csv.writer(outstream)
         writer.writerow(["OSM ID", "Dove ID"])
-        for way in result.ways:
-            writer.writerow([way.id, way.tags["ref:dove"]])
+        for way_group in [result.ways, result.nodes, result.relations]:
+            for way in way_group:
+                writer.writerow([way.id, way.tags["ref:dove"]])
+    print(len(result.ways) + len(result.nodes) + len(result.relations), "towers tagged")
 
 if __name__ == "__main__":
     get_done_doves(**get_args())
