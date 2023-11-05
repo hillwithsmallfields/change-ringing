@@ -91,27 +91,26 @@ def dove_josm_drive(tower_list, bb_size: float, changeset_comment_details: str):
     count = len([t for t in tower_list if t['RingType'] == 'Full-circle ring' and t['UR'] == ""])
     progress = 1
     for tower in tower_list:
-        if tower['RingType'] == 'Full-circle ring' and tower['UR'] == "":
-            name = tower['Place'] + " " + tower['Dedicn']
-            latitude = float(tower['Lat'])
-            longitude = float(tower['Long'])
-            tower_id = tower['TowerID']
-            # copy the tower ID into the clipboard, for easy pasting into JOSM
-            pyperclip.copy(tower_id)
-            # see https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-from-old-n-meters
-            dx = bb_size/2
-            dy = bb_size/2
-            # see https://josm.openstreetmap.de/wiki/Help/RemoteControlCommands#load_and_zoom
-            requests.get("""http://127.0.0.1:8111/load_and_zoom?changeset_comment=semi-automatic tagging of bell towers%s&changeset_source=Dove&left=%f&right=%f&bottom=%f&top=%f"""
-                         % (changeset_comment_details,
-                            longitude - (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180), # left
-                            longitude + (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180), # right,
-                            latitude - (dy / R_EARTH) * (180 / math.pi), # bottom,
-                            latitude + (dy / R_EARTH) * (180 / math.pi) # top
-                            ))
-            print("[% 4d/% 4d]" % (progress, count), tower_id, name, "at", latitude, longitude, "type return to continue")
-            progress += 1
-            _ = input()
+        name = tower['Place'] + " " + tower['Dedicn']
+        latitude = float(tower['Lat'])
+        longitude = float(tower['Long'])
+        tower_id = tower['TowerID']
+        # copy the tower ID into the clipboard, for easy pasting into JOSM
+        pyperclip.copy(tower_id)
+        # see https://stackoverflow.com/questions/7477003/calculating-new-longitude-latitude-from-old-n-meters
+        dx = bb_size/2
+        dy = bb_size/2
+        # see https://josm.openstreetmap.de/wiki/Help/RemoteControlCommands#load_and_zoom
+        requests.get("""http://127.0.0.1:8111/load_and_zoom?changeset_comment=semi-automatic tagging of bell towers%s&changeset_source=Dove&left=%f&right=%f&bottom=%f&top=%f"""
+                     % (changeset_comment_details,
+                        longitude - (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180), # left
+                        longitude + (dx / R_EARTH) * (180 / math.pi) / math.cos(latitude * math.pi/180), # right,
+                        latitude - (dy / R_EARTH) * (180 / math.pi), # bottom,
+                        latitude + (dy / R_EARTH) * (180 / math.pi) # top
+                        ))
+        print("[% 4d/% 4d]" % (progress, count), tower_id, name, "at", latitude, longitude, "type return to continue")
+        progress += 1
+        _ = input()
 
 def dove_josm_main(
         # files
@@ -166,7 +165,9 @@ def dove_josm_main(
             towers = filter_by_field(towers, selector, value)
     towers = [tower
               for tower in towers
-              if tower["TowerID"] not in already_done]
+              if (tower["TowerID"] not in already_done
+                  and tower['RingType'] == 'Full-circle ring'
+                  and tower['UR'] == "")]
     print(len(towers), "towers selected")
     dove_josm_drive(
         towers,
