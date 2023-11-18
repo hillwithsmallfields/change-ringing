@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import collections
 import csv
 import math
 import os
@@ -42,6 +43,10 @@ def get_args():
                         help="""Filter to towers in this diocese.""")
     parser.add_argument("--dedication",
                         help="""Filter to towers with this dedication.""")
+    # Action
+    parser.add_argument("--count",
+                        action='store_true',
+                        help="""Only count how many towers are selected in each diocese and county.""")
     # Data files
     parser.add_argument("--towers-file", "-t",
                         default="~/Downloads/dove.csv",
@@ -112,11 +117,22 @@ def dove_josm_drive(tower_list, bb_size: float, changeset_comment_details: str):
         progress += 1
         _ = input()
 
+def count_by(tower_list, selector):
+    counts = collections.defaultdict(int)
+    for tower in tower_list:
+        counts[tower[selector]] += 1
+    print("By", selector)
+    fmt = "%% %ds: %%d" % max(*[len(name) for name in counts.keys()])
+    for place in sorted(counts.keys()):
+        print(fmt % (place, counts[place]))
+
 def dove_josm_main(
         # files
         towers_file, done,
         # JOSM control
         bounding_box: float,
+        # actions
+        count: bool,
         # selection:
         match,
         start, end,
@@ -169,17 +185,21 @@ def dove_josm_main(
                   and tower['RingType'] == 'Full-circle ring'
                   and tower['UR'] == "")]
     print(len(towers), "towers selected")
-    dove_josm_drive(
-        towers,
-        bb_size=bounding_box,
-        changeset_comment_details=(
-            ""
-            + ((" in %s" % county) if county else "")
-            + ((" in %s diocese" % diocese) if diocese else "")
-            + ((" dedicated to %s" % dedication) if dedication else "")
-            + ((" matching %s" % match) if match else "")
-            + ((" within %g km of %s" % (float(within), around)) if around else "")
-        ))
+    if count:
+        count_by(towers, 'Diocese')
+        count_by(towers, 'County')
+    else:
+        dove_josm_drive(
+            towers,
+            bb_size=bounding_box,
+            changeset_comment_details=(
+                ""
+                + ((" in %s" % county) if county else "")
+                + ((" in %s diocese" % diocese) if diocese else "")
+                + ((" dedicated to %s" % dedication) if dedication else "")
+                + ((" matching %s" % match) if match else "")
+                + ((" within %g km of %s" % (float(within), around)) if around else "")
+            ))
 
 if __name__ == "__main__":
     dove_josm_main(**get_args())
