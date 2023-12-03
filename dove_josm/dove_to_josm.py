@@ -91,14 +91,17 @@ def filter_by_field(towers_list, field, value):
             for tower in towers_list
             if tower[field] == value]
 
+def safe_float(s):
+    return float(s) if s else 0.0
+
 def dove_josm_drive(tower_list, bb_size: float, changeset_comment_details: str):
     """Send commands to the JOSM remote control, to bring up each tower in the tower list."""
     count = len([t for t in tower_list if t['RingType'] == 'Full-circle ring' and t['UR'] == ""])
     progress = 1
     for tower in tower_list:
         name = tower['Place'] + " " + tower['Dedicn']
-        latitude = float(tower['Lat'])
-        longitude = float(tower['Long'])
+        latitude = safe_float(tower['Lat'])
+        longitude = safe_float(tower['Long'])
         tower_id = tower['TowerID']
         # copy the tower ID into the clipboard, for easy pasting into JOSM
         pyperclip.copy(tower_id)
@@ -188,6 +191,7 @@ def dove_josm_main(
     if count:
         count_by(towers, 'Diocese')
         count_by(towers, 'County')
+        print(len(towers), "towers remaining untagged")
     else:
         dove_josm_drive(
             towers,
