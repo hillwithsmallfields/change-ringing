@@ -22,7 +22,7 @@ def get_done_doves(output_file):
         writer.writerow(["OSM ID", "Dove ID"])
         for obj_group in [result.ways, result.nodes, result.relations]:
             for obj in obj_group:
-                writer.writerow([obj.id, obj.tags["ref:dove"]])
+                writer.writerow([obj.id, obj.tags["ref:dove"], obj.tags.get("name", "")])
     print(len(result.ways) + len(result.nodes) + len(result.relations), "towers tagged")
 
 if __name__ == "__main__":
