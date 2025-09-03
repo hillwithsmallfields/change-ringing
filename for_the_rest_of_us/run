@@ -5,4 +5,4 @@
 
 ./gen_rand_data.py > /tmp/given.json
 cp /tmp/given.json /tmp/records.json
-./restofus.py --records /tmp/records.json --list-ringers
+./restofus.py --records /tmp/records.json --list-ringers --list-methods --ringers-for "Cambridge Surprise Major"

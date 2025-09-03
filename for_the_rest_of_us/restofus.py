@@ -8,6 +8,7 @@ back.
 """
 
 import argparse
+import collections
 import datetime
 import json
 import os
@@ -187,6 +188,7 @@ class Practice:
         self.attendees = AttendeeGroup()
         self.ringers = {name: self.attendees.ringer(name) for name in ringers or []}
         self.methods = {name: asMethod(name) for name in methods or []}
+        self._by_method = None
 
     def from_dict(self, data):
         """Load this practice from a data dictionary as produced by self.to_dict()."""
@@ -207,6 +209,55 @@ class Practice:
             # TODO: perhaps record what was rung at each practice, as
             # a dict keyed by timestamp
         }
+
+    def scores_by_method(self):
+        """Return the current scores for each method."""
+        if not self._by_method:
+            self._by_method = collections.defaultdict(lambda: collections.defaultdict(dict))
+            for ringer in self.attendees.ringers.values():
+                for method, scores in ringer.learning_status.items():
+                    self._by_method[method][ringer.name] = scores
+        return self._by_method
+
+    def ringers_for_method(self, method):
+        return self.scores_by_method()[asMethodName(method)]
+
+    def learners_for_method(self, method):
+        """Return a dict binding learner names to their scores."""
+        return {name: scores
+                for name, scores in self.ringers_for_method(method).items()
+                if any(s < 0 for s in scores)}
+
+    def demand_for_method(self, method):
+        """Return how much demand there is for learning a method."""
+        return -sum(sum(scores)
+                    for scores in self.learners_for_method(method).values())
+
+    def methods_by_demand(self):
+        """Return a dict binding method names to the demand for the methods."""
+        return {name: self.demand_for_method(name)
+                for name in self.scores_by_method().keys()}
+
+    def methods_in_order_of_demand(self):
+        demands = self.methods_by_demand()
+        return sorted(demands.keys(),
+                      key=lambda x: demands[x],
+                      reverse=True)
+
+    def helpers_for_method(self, method):
+        """Return a dict binding helper names to their scores."""
+        return {name: scores
+                for name, scores in self.ringers_for_method(method).items()
+                if all(s >= 0 for s in scores)}
+
+    def list_methods(self):
+        """List the methods, with their scores."""
+        scores = self.scores_by_method()
+        for method_name in sorted(scores.keys()):
+            print(method_name)
+            data = scores[method_name]
+            for ringer in sorted(data.keys()):
+                print("  ", ringer, data[ringer])
 
 def get_args():
     """Get the command line arguments."""
@@ -235,6 +286,10 @@ def get_args():
         help="""Place a band.""")
     parser.add_argument(
         "--list-ringers", action='store_true')
+    parser.add_argument(
+        "--list-methods", action='store_true')
+    parser.add_argument(
+        "--ringers-for")
     return vars(parser.parse_args())
 
 def practice_main(
@@ -244,7 +299,9 @@ def practice_main(
         import_record=None,
         place=False,
         list_ringers=False,
+        list_methods=False,
         score=None,
+        ringers_for=None,
 ):
     """Run a practice action."""
     practice = Practice()
@@ -268,6 +325,23 @@ def practice_main(
     # practice actions:
     if list_ringers:
         practice.attendees.list_ringers()
+    if list_methods:
+        practice.list_methods()
+        print("Methods in decreasing order of demand:", practice.methods_in_order_of_demand())
+    if ringers_for:
+        print("Ringers for", ringers_for)
+        ringers = practice.ringers_for_method(ringers_for)
+        for name in sorted(ringers.keys()):
+            print("  ", name, ringers[name])
+        print("Learners for", ringers_for)
+        learners = practice.learners_for_method(ringers_for)
+        for name in sorted(learners.keys()):
+            print("  ", name, learners[name])
+        print("Total demand for learning", ringers_for, "is", practice.demand_for_method(ringers_for))
+        print("Helpers for", ringers_for)
+        helpers = practice.helpers_for_method(ringers_for)
+        for name in sorted(helpers.keys()):
+            print("  ", name, helpers[name])
     if place:
         print(practice.place_band())
 
