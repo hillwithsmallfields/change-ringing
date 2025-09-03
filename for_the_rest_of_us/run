@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Script to do my current development run of restofus.
+# Liable to change without notice.
+
+./gen_rand_data.py > /tmp/given.json
+cp /tmp/given.json /tmp/records.json
+./restofus.py --records /tmp/records.json --list-ringers
