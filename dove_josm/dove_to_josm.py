@@ -43,6 +43,9 @@ def get_args():
                         help="""Filter to towers in this diocese.""")
     parser.add_argument("--dedication",
                         help="""Filter to towers with this dedication.""")
+    parser.add_argument("--revisit",
+                        action='store_true',
+                        help="""Include towers that have already been done.""")
     # Action
     parser.add_argument("--count",
                         action='store_true',
@@ -140,6 +143,7 @@ def dove_josm_main(
         match,
         start, end,
         around, within: float,
+        revisit: bool,
         county,
         diocese,
         dedication):
@@ -184,7 +188,7 @@ def dove_josm_main(
             towers = filter_by_field(towers, selector, value)
     towers = [tower
               for tower in towers
-              if (tower["TowerID"] not in already_done
+              if ((revisit or tower["TowerID"] not in already_done)
                   and tower['RingType'] == 'Full-circle ring'
                   and tower['UR'] == "")]
     print(len(towers), "towers selected")
