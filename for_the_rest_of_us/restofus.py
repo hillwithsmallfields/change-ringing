@@ -12,6 +12,7 @@ import collections
 import datetime
 import json
 import os
+import random
 import shlex
 import sys
 
@@ -31,9 +32,11 @@ STAGE_BELLS = [
     "maximus",
     ]
 
-def nbells(stage_name: str):
+def nbells(method_name: str):
     """Return the number of bells in a method."""
-    return STAGE_BELLS.index(stage_name.split(' ')[-1].lower())
+    return STAGE_BELLS.index(method_name.split(' ')[-1].lower())
+
+LARGE_POSITIVE_NUMBER = 1000000000
 
 class Ringer:
 
@@ -73,7 +76,16 @@ class Ringer:
             self.email = data['email']
         if 'learning-status' in data:
             for method_name, method_scores in data['learning-status'].items():
-                self.learning_status[method_name] = method_scores
+                if method_name in self.learning_status:
+                    for place, score in enumerate(method_scores):
+                        # The incoming data may be from a scoring
+                        # system, in which case only one, or only
+                        # some, of the place bells may be scored, and
+                        # we don't want to disturb those that aren't:
+                        if score is not None:
+                            self.learning_status[method_name][place] = score
+                else:
+                    self.learning_status[method_name] = method_scores
 
     def method_learning_status(self, method):
         """Return this ringer's learning status for the specified method.
@@ -92,7 +104,11 @@ class Ringer:
 
     def set_method_place_bell_score(self, method, place_bell, score):
         """Set this ringer's score for a place bell of a method."""
-        self.method_learning_status(method)[place_bell] = score
+        self.method_learning_status(method)[place_bell-1] = score
+
+    def adjust_method_place_bell_score(self, method, place_bell, score_increment):
+        """Adjust this ringer's score for a place bell of a method."""
+        self.method_learning_status(method)[place_bell-1] += score_increment
 
 class AttendeeGroup:
 
@@ -180,6 +196,36 @@ class Touch:
         self.ringers = ringers
         self.calls = calls
 
+def worst_lead_except(scores, not_these):
+    """Return the worst lead for each ringer in the given scores,
+    except the not_these leads.
+    scores is a list of scores.
+    not_these is a list of indices to skip."""
+    worst_v = LARGE_POSITIVE_NUMBER
+    worst_i = None
+    for i, v in enumerate(scores):
+        if (not not_these[i]) and v < worst_v:
+            worst_i = i
+            worst_v = v
+    return worst_i
+
+def worst_leads_except(ringers_scores, not_these):
+    """Return the worst lead for each ringer in the given scores,
+    except the not_these leads.
+    scores is a list of scores.
+    not_these is a list of indices to skip."""
+    return {ringer: worst_lead_except(scores, not_these)
+            for ringer, scores in ringers_scores.items()}
+
+def key_of_lowest_value(dictionary):
+    lowest_k = None
+    lowest_v = LARGE_POSITIVE_NUMBER
+    for k, v in dictionary.items():
+        if v < lowest_v:
+            lowest_k = k
+            lowest_v = v
+    return lowest_k
+
 class Practice:
 
     """A session for practicing ringing."""
@@ -223,7 +269,11 @@ class Practice:
         return self.scores_by_method()[asMethodName(method)]
 
     def learners_for_method(self, method):
-        """Return a dict binding learner names to their scores."""
+        """Return a dict binding learner names to their scores.
+
+        A ringer counts as a learner if they have any negative scores
+        for that method.
+        """
         return {name: scores
                 for name, scores in self.ringers_for_method(method).items()
                 if any(s < 0 for s in scores)}
@@ -244,11 +294,68 @@ class Practice:
                       key=lambda x: demands[x],
                       reverse=True)
 
+    def methods_with_band_available(self):
+        return set([method_name
+                    for method_name, scores in self.scores_by_method().items()
+                    if len(scores) >= nbells(method_name)])
+
+    def methods_in_order_of_demand_with_band_available(self):
+        possible = self.methods_with_band_available()
+        return [method
+                for method in self.methods_in_order_of_demand()
+                if method in possible]
+
+    def most_demanded_method_with_band_available(self):
+        """Return the most demanded method for which enough ringers are available."""
+        return self.methods_in_order_of_demand_with_band_available()[0]
+
     def helpers_for_method(self, method):
-        """Return a dict binding helper names to their scores."""
+        """Return a dict binding helper names to their scores.
+
+        A ringer counts as a helper for a method if all their scores
+        for that method are positive.
+        """
         return {name: scores
                 for name, scores in self.ringers_for_method(method).items()
                 if all(s >= 0 for s in scores)}
+
+    def place_band(self, method):
+        """Place a band for a method."""
+        band = [None] * nbells(method)
+        learners = self.learners_for_method(method)
+        helpers = self.helpers_for_method(method)
+        print("Placing a band for", method)
+        print("Learners are:", learners)
+        print("Helpers are:",  helpers)
+        placing_learners = True
+        while not all(band):
+            if not learners:
+                placing_learners = False
+            if placing_learners:
+                each_worst_lead = worst_leads_except(learners, band)
+                print("Worst lead for each learner:", each_worst_lead)
+                most_needs_practice = key_of_lowest_value(each_worst_lead)
+                print("The learner most needing practice is", most_needs_practice, "and their worst lead is", each_worst_lead[most_needs_practice])
+                worst_lead_score = learners[most_needs_practice][each_worst_lead[most_needs_practice]]
+                print("Their score for their worst lead is", worst_lead_score)
+                band[each_worst_lead[most_needs_practice]] = most_needs_practice
+                print("band is now", band)
+                del learners[most_needs_practice]
+                print("remaining learners are", learners)
+            else:
+                print("placing a helper, from among", helpers, "into band", band)
+                for i, p in enumerate(band):
+                    print("  already got", p, "on bell", i)
+                    if not p:
+                        print("  nobody on bell", i)
+                        # place a helper
+                        helper = random.choice(list(helpers.keys()))
+                        print("placing helper", helper, "on bell", i)
+                        band[i] = helper
+                        del helpers[helper]
+                        break
+        print("placed band thus:", band)
+        return band
 
     def list_methods(self):
         """List the methods, with their scores."""
@@ -281,9 +388,12 @@ def get_args():
         help="""Import a ringer's record from a file.""")
     # Commands:
     parser.add_argument(
-        "--place", "-p",
+        "--place", "--place-for", "-p",
+        help="""Place a band for a specified method.""")
+    parser.add_argument(
+        "--next", "-n",
         action='store_true',
-        help="""Place a band.""")
+        help="""Place a band for the next touch, choosing the method automatically.""")
     parser.add_argument(
         "--list-ringers", action='store_true')
     parser.add_argument(
@@ -297,7 +407,8 @@ def practice_main(
         ringer=None,
         records=None,
         import_record=None,
-        place=False,
+        place=None,
+        next=False,
         list_ringers=False,
         list_methods=False,
         score=None,
@@ -327,7 +438,6 @@ def practice_main(
         practice.attendees.list_ringers()
     if list_methods:
         practice.list_methods()
-        print("Methods in decreasing order of demand:", practice.methods_in_order_of_demand())
     if ringers_for:
         print("Ringers for", ringers_for)
         ringers = practice.ringers_for_method(ringers_for)
@@ -343,7 +453,9 @@ def practice_main(
         for name in sorted(helpers.keys()):
             print("  ", name, helpers[name])
     if place:
-        print(practice.place_band())
+        print(practice.place_band(place))
+    if next:
+        print(practice.place_band(practice.most_demanded_method_with_band_available()))
 
     # save records:
     if records:
