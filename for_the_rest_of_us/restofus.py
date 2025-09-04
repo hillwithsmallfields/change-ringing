@@ -319,42 +319,39 @@ class Practice:
                 for name, scores in self.ringers_for_method(method).items()
                 if all(s >= 0 for s in scores)}
 
-    def place_band(self, method):
+    def place_band(self, method, lower_threshold=-2, upper_threshold=2):
         """Place a band for a method."""
         band = [None] * nbells(method)
+        band_scores = [0] * nbells(method)
         learners = self.learners_for_method(method)
         helpers = self.helpers_for_method(method)
-        print("Placing a band for", method)
-        print("Learners are:", learners)
-        print("Helpers are:",  helpers)
         placing_learners = True
         while not all(band):
             if not learners:
                 placing_learners = False
             if placing_learners:
                 each_worst_lead = worst_leads_except(learners, band)
-                print("Worst lead for each learner:", each_worst_lead)
                 most_needs_practice = key_of_lowest_value(each_worst_lead)
-                print("The learner most needing practice is", most_needs_practice, "and their worst lead is", each_worst_lead[most_needs_practice])
-                worst_lead_score = learners[most_needs_practice][each_worst_lead[most_needs_practice]]
-                print("Their score for their worst lead is", worst_lead_score)
-                band[each_worst_lead[most_needs_practice]] = most_needs_practice
-                print("band is now", band)
+                bell_to_allocate = each_worst_lead[most_needs_practice]
+                worst_lead_score = learners[most_needs_practice][bell_to_allocate]
+                band[bell_to_allocate] = most_needs_practice
+                band_scores[bell_to_allocate] = worst_lead_score
                 del learners[most_needs_practice]
-                print("remaining learners are", learners)
             else:
-                print("placing a helper, from among", helpers, "into band", band)
                 for i, p in enumerate(band):
-                    print("  already got", p, "on bell", i)
                     if not p:
-                        print("  nobody on bell", i)
                         # place a helper
                         helper = random.choice(list(helpers.keys()))
-                        print("placing helper", helper, "on bell", i)
+                        helper_score = helpers[helper][i]
                         band[i] = helper
+                        band_scores[i] = helper_score
                         del helpers[helper]
                         break
-        print("placed band thus:", band)
+            overall_score = sum(band_scores)
+            if overall_score < lower_threshold:
+                placing_learners = False
+            elif overall_score > upper_threshold:
+                placing_learners = True
         return band
 
     def list_methods(self):
