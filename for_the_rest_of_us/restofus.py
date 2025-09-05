@@ -9,6 +9,7 @@ back.
 
 import argparse
 import collections
+import csv
 import datetime
 import json
 import os
@@ -43,7 +44,7 @@ class Ringer:
     """The data and methods for a ringer."""
 
     def __init__(self, name: str,
-                 email=None,
+                 email="",
                  learning_status=None,
                  group=None):
         self.name = name
@@ -132,7 +133,7 @@ class AttendeeGroup:
                       if ringer in self.ringers
                       else Ringer(name=ringer, group=self, **kwargs)))
 
-    def add_ringer(self, name, email=None):
+    def add_ringer(self, name, email=""):
         """Add a ringer to the attendee group."""
         # registers by side effect
         self.ringer(name, email=email)
@@ -140,10 +141,11 @@ class AttendeeGroup:
     def list_ringers(self):
         for name in sorted(self.ringers.keys()):
             data = self.ringers[name]
-            print(name, data.email)
-            method_names = sorted(data.learning_status.keys())
+            print("Ringer", name, data.email or "(no email)")
+            ringer_learning_status = data.learning_status
+            method_names = sorted(ringer_learning_status.keys())
             for methname in method_names:
-                print("  ", methname, data.learning_status[methname])
+                print("  ", methname, ringer_learning_status[methname])
 
 class Method:
 
@@ -232,16 +234,15 @@ class Practice:
 
     def __init__(self, ringers=None, methods=None):
         self.attendees = AttendeeGroup()
-        self.ringers = {name: self.attendees.ringer(name) for name in ringers or []}
         self.methods = {name: asMethod(name) for name in methods or []}
         self._by_method = None
 
     def from_dict(self, data):
         """Load this practice from a data dictionary as produced by self.to_dict()."""
-        for name, email in data.get('emails', {}).items():
-            self.attendees.add_ringer(name, email=email)
-        for name, scores in data.get('records', {}).items():
-            self.attendees.ringer(name).learning_status.update(scores)
+        for name, data in data.get('records', {}).items():
+            ringer = self.attendees.ringer(name)
+            ringer.learning_status.update(data['learning-status'])
+            ringer.email = data.get('email', '')
 
     def to_dict(self):
         """Make a JSON-serializable data dictionary representing this practice."""
@@ -255,6 +256,16 @@ class Practice:
             # TODO: perhaps record what was rung at each practice, as
             # a dict keyed by timestamp
         }
+
+    def add_ringer(self, table_row):
+        name = table_row['Name']
+        self.attendees.add_ringer(name, table_row['Email'])
+        for raw_method in table_row['Ringing'].split(';'):
+            method = raw_method.strip()
+            self.attendees.ringers[name].learning_status[method] = [1] * nbells(method)
+        for i, raw_method in enumerate(table_row['Learning'].split(';')):
+            method = raw_method.strip()
+            self.attendees.ringers[name].learning_status[method] = [-1/(i+1)] * nbells(method)
 
     def scores_by_method(self):
         """Return the current scores for each method."""
@@ -295,6 +306,7 @@ class Practice:
                       reverse=True)
 
     def methods_with_band_available(self):
+        print("scores by method are", self.scores_by_method())
         return set([method_name
                     for method_name, scores in self.scores_by_method().items()
                     if len(scores) >= nbells(method_name)])
@@ -346,11 +358,12 @@ class Practice:
                         band[i] = helper
                         band_scores[i] = helper_score
                         del helpers[helper]
+                        # we place just that one helper here, then go to the outer loop:
                         break
             overall_score = sum(band_scores)
-            if overall_score < lower_threshold:
+            if overall_score < lower_threshold and helpers:
                 placing_learners = False
-            elif overall_score > upper_threshold:
+            elif overall_score > upper_threshold and learners:
                 placing_learners = True
         return band
 
@@ -380,9 +393,10 @@ def get_args():
         "--records", "-R",
         help="""The file to load training records from and save them to.""")
     parser.add_argument(
-        "--import-record", "-i",
+        "--import-record", "--import", "-i",
         action='append',
-        help="""Import a ringer's record from a file.""")
+        help="""Import a ringer's record from a JSON file,
+        or multiple entries from a CSV file.""")
     # Commands:
     parser.add_argument(
         "--place", "--place-for", "-p",
@@ -426,9 +440,16 @@ def practice_main(
         practice.attendees.add_ringer(ringer_name)
     for record in import_record or []:
         if record and os.path.exists(record):
-            with open(record) as recstr:
-                rec_data = json.load(recstr)
-                practice.attendees.ringer(rec_data['name']).merge_from_dict(rec_data)
+            if record.endswith(".csv"):
+                with open(record) as recstr:
+                    for row in csv.DictReader(recstr):
+                        practice.add_ringer(row)
+            elif record.endswith(".json"):
+                with open(record) as recstr:
+                    rec_data = json.load(recstr)
+                    practice.attendees.ringer(rec_data['name']).merge_from_dict(rec_data)
+            else:
+                print("Cannot import this type of file:", record)
 
     # practice actions:
     if list_ringers:
