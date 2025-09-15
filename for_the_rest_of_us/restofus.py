@@ -376,6 +376,21 @@ class Practice:
             for ringer in sorted(data.keys()):
                 print("  ", ringer, data[ringer])
 
+    def list_ringers_for_method(self, method_name):
+        print("Ringers for", method_name)
+        ringers = self.method_name_method(method_name)
+        for name in sorted(ringers.keys()):
+            print("  ", name, ringers[name])
+        print("Learners for", method_name)
+        learners = self.learners_for_method(method_name)
+        for name in sorted(learners.keys()):
+            print("  ", name, learners[name])
+        print("Total demand for learning", method_name, "is", self.demand_for_method(method_name))
+        print("Helpers for", method_name)
+        helpers = self.helpers_for_method(method_name)
+        for name in sorted(helpers.keys()):
+            print("  ", name, helpers[name])
+
 def get_args():
     """Get the command line arguments."""
     parser = argparse.ArgumentParser(
@@ -457,19 +472,7 @@ def practice_main(
     if list_methods:
         practice.list_methods()
     if ringers_for:
-        print("Ringers for", ringers_for)
-        ringers = practice.ringers_for_method(ringers_for)
-        for name in sorted(ringers.keys()):
-            print("  ", name, ringers[name])
-        print("Learners for", ringers_for)
-        learners = practice.learners_for_method(ringers_for)
-        for name in sorted(learners.keys()):
-            print("  ", name, learners[name])
-        print("Total demand for learning", ringers_for, "is", practice.demand_for_method(ringers_for))
-        print("Helpers for", ringers_for)
-        helpers = practice.helpers_for_method(ringers_for)
-        for name in sorted(helpers.keys()):
-            print("  ", name, helpers[name])
+        practice.list_ringers_for_method(ringers_for)
     if place:
         print(practice.place_band(place))
     if next:

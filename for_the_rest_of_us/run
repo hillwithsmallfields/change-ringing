@@ -3,6 +3,14 @@
 # Script to do my current development run of restofus.
 # Liable to change without notice.
 
-./gen_rand_data.py > /tmp/given.json
-cp /tmp/given.json /tmp/records.json
-./restofus.py --records /tmp/records.json --list-ringers --list-methods --ringers-for "Cambridge Surprise Major"
+# start afresh each run:
+RECORDS=/tmp/records.json
+
+rm -f $RECORDS
+
+./restofus.py --records $RECORDS --import histon.csv
+cp $RECORDS /tmp/0.json
+./restofus.py --records $RECORDS --list-ringers
+cp $RECORDS /tmp/1.json
+# ./restofus.py --records $RECORDS --place "Cambridge Surprise Major"
+# ./restofus.py --records $RECORDS --next
