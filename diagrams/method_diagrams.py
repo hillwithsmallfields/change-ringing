@@ -1,32 +1,42 @@
 #!/usr/bin/env python3
 
-SQUARE_DOWN="""
-  <g transform="translate(%d %d)">
-    <rect width="64" height="64" x="0" y="0" fill="lightgrey"/>
-    <path d="M 16 0 L 0 16
-             M 32 0 L 0 32
-             M 48 0 L 0 48
-             M 64 0 L 0 64
-             M 16 64 L 64 16
-             M 32 64 L 64 32
-             M 64 48 L 48 64" stroke="grey" stroke-width="1"/>
-  </g>
-"""
+import os
 
-SQUARE_UP="""
-  <g transform="translate(%d %d)">
-    <rect width="64" height="64" x="0" y="0" fill="grey"/>
-    <path d="M 48 0 L 64 16
-             M 32 0 L 64 32
-             M 16 0 L 64 48
-             M 0 0 L 64 64
-             M 0 16 L 48 64
-             M 0 32 L 32 64
-             M 0 48 L 16 64" stroke="lightgrey" stroke-width="1"/>
-  </g>
-"""
+SIZE = 16
+SPACING = SIZE/4
 
-SIZE=64
+POSITIONS = {
+    'p1': SPACING * 1,
+    'p2': SPACING * 2,
+    'p3': SPACING * 3,
+    'p4': SPACING * 4,
+}
+
+SQUARE_DOWN='''
+  <g transform="translate(%%d %%d)">
+    <rect width="%(p4)d" height="%(p4)d" x="0" y="0" fill="lightgrey"/>
+    <path d="M %(p1)d 0 L 0 %(p1)d
+             M %(p2)d 0 L 0 %(p2)d
+             M %(p3)d 0 L 0 %(p3)d
+             M %(p4)d 0 L 0 %(p4)d
+             M %(p1)d %(p4)d L %(p4)d %(p1)d
+             M %(p2)d %(p4)d L %(p4)d %(p2)d
+             M %(p4)d %(p3)d L %(p3)d %(p4)d" stroke="grey" stroke-width="1"/>
+  </g>
+''' % POSITIONS
+
+SQUARE_UP='''
+  <g transform="translate(%%d %%d)">
+    <rect width="%(p4)d" height="%(p4)d" x="0" y="0" fill="grey"/>
+    <path d="M %(p3)d 0 L %(p4)d %(p1)d
+             M %(p2)d 0 L %(p4)d %(p2)d
+             M %(p1)d 0 L %(p4)d %(p3)d
+             M 0 0 L %(p4)d %(p4)d
+             M 0 %(p1)d L %(p3)d %(p4)d
+             M 0 %(p2)d L %(p2)d %(p4)d
+             M 0 %(p3)d L %(p1)d %(p4)d" stroke="lightgrey" stroke-width="1"/>
+  </g>
+''' % POSITIONS
 
 class Bell:
 
@@ -36,6 +46,12 @@ class Bell:
         self.y = start-1 if horizontal else 0
         self.line = [(self.x, self.y)]
         self.colour = colour
+
+    def place_min(self):
+        return min(x if self.horizontal else y for x, y in self.line)
+
+    def place_max(self):
+        return max(y if self.horizontal else x for x, y in self.line)
 
     def down(self, n=1):
         if self.horizontal:
@@ -68,7 +84,7 @@ class Bell:
     def render(self):
         return ('''<path d="M %d %d ''' % (self.line[0][0] * SIZE, self.line[0][1] * SIZE)
                 + ' '.join("L %d %d" % (p[0] * SIZE, p[1] * SIZE) for p in self.line[1:])
-                + '''" stroke="%s" stroke-width="7" fill="none" transform="translate(%d %d)"/>''' % (self.colour, SIZE / 2, SIZE / 2))
+                + '''" stroke="%s" stroke-width="3" fill="none" transform="translate(%d %d)"/>''' % (self.colour, SIZE / 2, SIZE / 2))
 
 def svg(width, height, text):
     return ("""<svg width="%d" height="%d" xmlns="http://www.w3.org/2000/svg">\n""" % (width * SIZE, height * SIZE)
@@ -80,8 +96,25 @@ def checker(width, height):
                    for x in range(width)
                    for y in range(height))
 
-def diagram(filename, width, height, contents):
-    with open(filename, 'w') as output:
+def from_moves(start, moves, **kwargs):
+    bell = Bell(start, **kwargs)
+    for move in moves:
+        match move:
+            case '\\' | 'u' | '+': bell = bell.up()
+            case '/' | 'd' | '-': bell = bell.down()
+            case '|' | 'p' | '=': bell = bell.place()
+    rows = len(moves) + 1
+    columns = bell.place_max()
+    print(rows, "rows, and", columns, "columns")
+    return svg(rows, columns,
+               (checker(rows, columns)
+                + bell.render()))
+
+def diagram(filename, contents):
+    full_name = os.path.join("/tmp/diagrams", filename)
+    os.makedirs(os.path.dirname(full_name), exist_ok=True)
+    print("writing", full_name)
+    with open(full_name, 'w') as output:
         output.write(contents)
 
 def two_bells_hunting(width):
@@ -91,16 +124,18 @@ def two_bells_hunting(width):
                 + Bell(2).down().place().up(width-1).place().down(width-3).render()))
 
 if __name__ == "__main__":
-    diagram("hunt.svg", 6, 12, two_bells_hunting(6))
-    diagram("place-same-direction.svg", 6, 6,
+    diagram("hunt.svg", two_bells_hunting(6))
+    diagram("place-same-direction.svg",
             svg(6, 7,
                 (checker(6, 7)
                  + Bell(1).up(3).place().up(2).render())))
-    diagram("point.svg", 6, 6,
+    diagram("point.svg",
             svg(6, 7,
                 (checker(6, 7)
                  + Bell(1).up(3).down(3).render())))
-    diagram("just-places.svg", 8, 4,
+    diagram("just-places.svg",
             svg(8, 4,
                 (checker(8, 4)
                  + Bell(1, horizontal=True).down(2).place().up().place().down(2).render())))
+    diagram("place-dodge-place.svg",
+            from_moves(1, "++=-+-=++", horizontal=True))
