@@ -100,12 +100,11 @@ def from_moves(start, moves, **kwargs):
     bell = Bell(start, **kwargs)
     for move in moves:
         match move:
-            case '\\' | 'u' | '+': bell = bell.up()
-            case '/' | 'd' | '-': bell = bell.down()
-            case '|' | 'p' | '=': bell = bell.place()
+            case '\\' | 'u' | '+' | '>': bell = bell.up()
+            case '/'  | 'd' | '-' | '<': bell = bell.down()
+            case '|'  | 'p' | '='      : bell = bell.place()
     rows = len(moves) + 1
-    columns = bell.place_max()
-    print(rows, "rows, and", columns, "columns")
+    columns = bell.place_max() + 1
     return svg(rows, columns,
                (checker(rows, columns)
                 + bell.render()))
@@ -138,4 +137,10 @@ if __name__ == "__main__":
                 (checker(8, 4)
                  + Bell(1, horizontal=True).down(2).place().up().place().down(2).render())))
     diagram("place-dodge-place.svg",
-            from_moves(1, "++=-+-=++", horizontal=True))
+            from_moves(4, "++=-+-=++", horizontal=True))
+    diagram("yorkshire-places.svg",
+            from_moves(4, "++-+=-=+-++", horizontal=True))
+    diagram("cambridge-places.svg",
+            from_moves(4, "++-+=-=+-+=-=+-++", horizontal=True))
+    diagram("superlative-places.svg",
+            from_moves(4, "++-+=-=+-+=-=+-+=-+--", horizontal=True))
