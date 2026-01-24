@@ -6,6 +6,8 @@ import re
 
 """Read, expand and normalise BellBoard data from its CSV output."""
 
+STAGES_PATTERN = re.compile(" (Singles|Minimus|Doubles|Minor|Triples|Major|Caters|Royal|Cinques|Maximus|Max)")
+
 METADATA_PATTERN_STR = r"[0-9]+ [Cc][Oo][Mm]|[Aa][Tt][Ww]\.?"
 METADATA_PATTERN = re.compile(METADATA_PATTERN_STR)
 REMOVE_METADATA = re.compile("(.+) " + METADATA_PATTERN_STR)
@@ -13,7 +15,7 @@ REMOVE_METADATA = re.compile("(.+) " + METADATA_PATTERN_STR)
 def _is_metadata(text):
     return METADATA_PATTERN.match(text)
 
-def _normalise(text):
+def _normalise(text, stage):
     text = m.group(1) if (m := re.match("[0-9]+(?: each)? (.+)", text)) else text
     text = m.group(1) if (m := re.match(r"\([0-9]+\) (.+)", text)) else text
     text = m.group(1) if (m := re.match(REMOVE_METADATA, text)) else text
@@ -30,12 +32,14 @@ def _normalise(text):
                                     ]:
         if text.endswith(abbreviation):
             text = text.replace(abbreviation, expansion)
+        if not STAGES_PATTERN.search(text):
+            text += " " + stage
     return text
 
-def _methods(details):
+def _methods(details, stage):
     details = details.replace("&", ";").replace(" and ", ";")
     groups = details.split(';') if ';' in details else [details]
-    inners = [_normalise(filtered)
+    inners = [_normalise(filtered, stage)
               for filtered in (method.strip()
                              for group in groups
                              for method in (group.split(',') if ',' in group else [group]))
@@ -55,9 +59,12 @@ class Performance:
         self.bells_type = row['bells_type']
         self.tenor = row['tenor']
         self.duration = row['duration']
-        self.changes = row['changes']
+        changes = row['changes']
+        self.changes = int(changes) if changes else None
         methods = row['title']
-        self.methods = _methods(row['method_details']) if re.search("([0-9]+m)", methods) else [methods]
+        staged = STAGES_PATTERN.search(methods)
+        self.methods = _methods(row['method_details'],
+                                staged.group(1) if staged else "") if re.search("([0-9]+m)", methods) else [methods]
         self.composer = row['composer']
         self.footnotes = row['footnotes']
         self.by_ringer = {}
