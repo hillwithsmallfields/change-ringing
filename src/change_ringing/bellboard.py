@@ -7,6 +7,8 @@ import os
 import re
 import requests
 
+import pyproj
+
 import towers
 
 """Read, expand and normalise BellBoard data from its CSV output."""
@@ -143,7 +145,8 @@ def get_dove_data():
     return dove_data
 
 def by_tower(perfs):
-    """Combine performance and tower data."""
+    """Combine performance and tower data.
+    This doesn't yet get the towers right if there are multiple towers with the same placename."""
     by_tower = collections.defaultdict(list)
     tower_data = get_dove_data()
     for performance in perfs:
@@ -151,11 +154,30 @@ def by_tower(perfs):
     return by_tower
 
 def list_tower_performances(by_towers):
+    """List the performances by tower.
+    This doesn't yet get the towers right if there are multiple towers with the same placename."""
+    transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857")
     tower_data = get_dove_data()
     for tower_name in sorted(by_towers.keys(), key=lambda place: len(by_towers[place]), reverse=True):
         tower_details = tower_data.get(tower_name)
         rung_here = by_towers[tower_name]
-        print("%s: %d performances" % (tower_name, len(rung_here)))
+        osm = ""
+        bells = ""
+        if tower_details:
+            latitude = float(tower_details['Lat'])
+            longitude = float(tower_details['Long'])
+            eastings, northings = transformer.transform(longitude, latitude)
+            osm = "https://www.openstreetmap.org/#map=18/%f/%f" % (latitude, longitude)
+            weight = int(tower_details['Wt'])
+            cwt = weight // 112
+            qt = (weight - (cwt * 112)) // 28
+            lbs  = weight - ((cwt * 112) + (qt * 28))
+            bells = " %d %d-%d-%d" % (int(tower_details['Bells']), cwt, qt, lbs)
+        print("%s%s: (%d performances) %s" % (tower_name,
+                                            bells,
+                                            len(rung_here),
+                                            osm
+                                            ))
         for touch in rung_here:
             print("  ", ", ".join(touch.methods))
 
