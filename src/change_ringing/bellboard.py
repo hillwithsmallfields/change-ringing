@@ -145,17 +145,17 @@ def get_dove_data():
     return dove_data
 
 def by_tower(perfs):
-    """Combine performance and tower data.
-    This doesn't yet get the towers right if there are multiple towers with the same placename."""
+    """Combine performance and tower data."""
     by_tower = collections.defaultdict(list)
     tower_data = get_dove_data()
     for performance in perfs:
-        by_tower[performance.place].append(performance)
+        address = performance.address.replace("St ", "S ") # Dove uses S for Saint, not St, but people usually enter St in bellboard
+        full = performance.place + ", " + address
+        by_tower[full if full in tower_data else performance.place].append(performance)
     return by_tower
 
 def list_tower_performances(by_towers):
-    """List the performances by tower.
-    This doesn't yet get the towers right if there are multiple towers with the same placename."""
+    """List the performances by tower."""
     transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857")
     tower_data = get_dove_data()
     for tower_name in sorted(by_towers.keys(), key=lambda place: len(by_towers[place]), reverse=True):
@@ -190,8 +190,6 @@ def main(place=None, region=None, filename=None, since=None, bells='4+', tower_d
     else:
         for p in data:
             print(p)
-
-# https://bb.ringingworld.co.uk/export.php?from=01%2F01%2F2023&region=Cambridgeshire&bells_type=tower&fmt=csv_header
 
 if __name__ == "__main__":
     main(**get_args())
