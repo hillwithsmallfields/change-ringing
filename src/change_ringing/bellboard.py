@@ -154,15 +154,19 @@ def by_tower(perfs):
         by_tower[full if full in tower_data else performance.place].append(performance)
     return by_tower
 
+Place = collections.namedtuple('Place', ['tower_name', 'bells', 'tenor', 'osm_url', 'performances'])
+
 def list_tower_performances(by_towers):
-    """List the performances by tower."""
+    """List the performances by tower.
+    Also, return the list of performances."""
     transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857")
     tower_data = get_dove_data()
+    places = []
     for tower_name in sorted(by_towers.keys(), key=lambda place: len(by_towers[place]), reverse=True):
         tower_details = tower_data.get(tower_name)
         rung_here = by_towers[tower_name]
-        osm = ""
-        bells = ""
+        osm = None
+        bells = None
         if tower_details:
             latitude = float(tower_details['Lat'])
             longitude = float(tower_details['Long'])
@@ -172,14 +176,17 @@ def list_tower_performances(by_towers):
             cwt = weight // 112
             qt = (weight - (cwt * 112)) // 28
             lbs  = weight - ((cwt * 112) + (qt * 28))
-            bells = " %d %d-%d-%d" % (int(tower_details['Bells']), cwt, qt, lbs)
+            tenor = "%d-%d-%d" % (cwt, qt, lbs)
+            bells = " %d %s" % (int(tower_details['Bells']), tenor)
         print("%s%s: (%d performances) %s" % (tower_name,
-                                            bells,
-                                            len(rung_here),
-                                            osm
-                                            ))
+                                              bells or "",
+                                              len(rung_here),
+                                              osm or "",
+                                              ))
         for touch in rung_here:
             print("  ", ", ".join(touch.methods))
+        places.append(Place(tower_name, int(tower_details['Bells']) if tower_details else None, tenor, osm, rung_here))
+    return places
 
 def main(place=None, region=None, filename=None, since=None, bells='4+', tower_details=False, verbose=False):
     data = (parse_performance_list(filename)
