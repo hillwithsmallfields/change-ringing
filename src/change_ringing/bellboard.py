@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import argparse
 import csv
 import os
 import re
+import requests
 
 """Read, expand and normalise BellBoard data from its CSV output."""
 
@@ -11,6 +13,16 @@ STAGES_PATTERN = re.compile(" (Singles|Minimus|Doubles|Minor|Triples|Major|Cater
 METADATA_PATTERN_STR = r"[0-9]+ [Cc][Oo][Mm]|[Aa][Tt][Ww]\.?"
 METADATA_PATTERN = re.compile(METADATA_PATTERN_STR)
 REMOVE_METADATA = re.compile("(.+) " + METADATA_PATTERN_STR)
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--place", "-p")
+    parser.add_argument("--region", "--county", "-c")
+    parser.add_argument("--filename", "--file", "-f")
+    parser.add_argument("--since", "-s")
+    parser.add_argument("--bells", "-b", type=int, default='4+')
+    parser.add_argument("--verbose", "-v", action='store_true')
+    return vars(parser.parse_args())
 
 def _is_metadata(text):
     return METADATA_PATTERN.match(text)
@@ -34,7 +46,7 @@ def _normalise(text, stage):
             text = text.replace(abbreviation, expansion)
         if not STAGES_PATTERN.search(text):
             text += " " + stage
-    return text
+    return text.strip(' ')
 
 def _methods(details, stage):
     details = details.replace("&", ";").replace(" and ", ";")
@@ -85,16 +97,44 @@ class Performance:
                 self.by_bell[int(bells)] = ringer
 
     def __str__(self):
-        return f"<Performance {self.performance_id} {self.date_rung} {self.methods} {list(self.by_ringer.keys())}>"
+        return f"<Performance {self.performance_id} {self.date_rung} {self.place} ({self.address}) {self.methods} {list(self.by_ringer.keys())}>"
 
-def parse_performance_list(csv_file="~/Downloads/export.csv"):
+def parse_performance_list(byte_data):
+    # strip optional header stuff
+    while byte_data[0] & 0x80:
+        byte_data = byte_data[1:]
+    return [Performance(row) for row in csv.DictReader(byte_data.decode('utf8').splitlines())]
+
+def parse_performance_list_file(csv_file="~/Downloads/export.csv"):
     with open(os.path.expanduser(csv_file), 'rb') as stream:
-        bytes = stream.read()
-        # strip optional header stuff
-        while bytes[0] & 0x80:
-            bytes = bytes[1:]
-        return [Performance(row) for row in csv.DictReader(bytes.decode('utf8').splitlines())]
+        return parse_performance_list(stream.read())
+
+def performances(place=None, region=None, since=None, bells='4+', verbose=False):
+    if since and (m := re.match("([0-9]{4})/([0-9]{2})/([0-9]{2})", since)):
+        since = "%02d/%02d/%04d" % (m.group(3), m.group(2), m.group(1))
+    query = {'bells': bells,
+             'ring_type': 'english',
+             'bells_type': 'tower',
+             'fmt': 'csv_header'}
+    if place:
+        query['place'] = place
+    if region:
+        query['region'] = region
+    if since:
+        query['from'] = since
+    if verbose:
+        print("Using query:", query)
+    response = requests.get("https://bb.ringingworld.co.uk/export.php", query)
+    return parse_performance_list(response.content) if (response.status_code == 200) else None
+
+def main(place=None, region=None, filename=None, since=None, bells='4+', verbose=False):
+    data = (parse_performance_list(filename)
+            if filename
+            else performances(place, region, since, bells, verbose))
+    for p in data:
+        print(p)
+
+# https://bb.ringingworld.co.uk/export.php?from=01%2F01%2F2023&region=Cambridgeshire&bells_type=tower&fmt=csv_header
 
 if __name__ == "__main__":
-    for p in parse_performance_list():
-        print(p)
+    main(**get_args())
