@@ -132,15 +132,21 @@ if __name__ == "__main__":
             svg(6, 7,
                 (checker(6, 7)
                  + Bell(1).up(3).down(3).render())))
-    diagram("just-places.svg",
+    diagram("two-places.svg",
             svg(8, 4,
                 (checker(8, 4)
                  + Bell(1, horizontal=True).down(2).place().up().place().down(2).render())))
     diagram("place-dodge-place.svg",
             from_moves(4, "++=-+-=++", horizontal=True))
+    diagram("dodge-place-dodge.svg",
+            from_moves(4, "++-+=-+--", horizontal=True))
+    diagram("dodge-dodge-place-dodge.svg",
+            from_moves(4, "++-+-+=-+--", horizontal=True))
     diagram("yorkshire-places.svg",
             from_moves(4, "++-+=-=+-++", horizontal=True))
     diagram("cambridge-places.svg",
             from_moves(4, "++-+=-=+-+=-=+-++", horizontal=True))
     diagram("superlative-places.svg",
             from_moves(4, "++-+=-=+-+=-=+-+=-+--", horizontal=True))
+    diagram("cambridge-frontwork-from-bob.svg",
+            from_moves(1, "--+-=+=-+-=+-++", horizontal=True))
