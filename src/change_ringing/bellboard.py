@@ -162,8 +162,8 @@ def list_tower_performances(by_towers):
     Also, return the list of performances."""
     transformer = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857")
     tower_data = get_dove_data()
-    places = collections.defaultdict(list)
-    for tower_name in sorted(by_towers.keys(), key=lambda place: len(by_towers[place]), reverse=True):
+    places = {}
+    for tower_name, tower_details in by_towers.items():
         tower_details = tower_data.get(tower_name)
         rung_here = by_towers[tower_name]
         osm = None
@@ -179,48 +179,60 @@ def list_tower_performances(by_towers):
             lbs  = weight - ((cwt * 112) + (qt * 28))
             tenor = "%d-%d-%d" % (cwt, qt, lbs)
             bells = " %d %s" % (int(tower_details['Bells']), tenor)
-        print("%s%s: (%d performances) %s" % (tower_name,
-                                              bells or "",
-                                              len(rung_here),
-                                              osm or "",
-                                              ))
-        for touch in rung_here:
-            print("  ", ", ".join(touch.methods))
-        places[tower_name].append(Place(tower_name, int(tower_details['Bells']) if tower_details else None, tenor, osm, rung_here))
+        places[tower_name] = Place(tower_name=tower_name,
+                                   bells=int(tower_details['Bells']) if tower_details else None,
+                                   tenor=tenor,
+                                   osm_url=osm,
+                                   performances=rung_here)
     return places
+
+def print_tower_performances(tower_perfs):
+    for tower_name in sorted(tower_perfs.keys(),
+                             key=lambda place: len(tower_perfs[place]), reverse=True):
+        print("tower name:", tower_name)
+        tower = tower_perfs[tower_name]
+        print("tower data:", tower)
+        print("%s%s: (%d performances) %s" % (tower.tower_name,
+                                              tower.bells or "",
+                                              len(tower.performances),
+                                              tower.osm_url or "",
+                                              ))
+        for touch in tower.performances:
+            print("  ", ", ".join(touch.methods))
 
 def main(place=None, region=None, filename=None, since=None, bells='4+', tower_details=False, tower_ringers=False, verbose=False):
     data = (parse_performance_list_file(filename)
             if filename
             else performances(place=place, region=region, since=since, bells=bells, verbose=verbose))
     if tower_details:
-        performance_places = list_tower_performances(by_tower(data))
         if tower_ringers:
-            performances_by_ringers = collections.defaultdict(list)
-            towers_by_ringers = collections.defaultdict(list)
-            for performance in data:
-                for ringer in performance.by_ringer.keys():
-                    performances_by_ringers[ringer].append(performance)
-                    towers_by_ringers[ringer].append(performance.place)
+            counters_by_ringer = tower_counts_by_ringers(data)
+            rang_most_at = main_towers_by_ringer(counters_by_ringer)
             if verbose:
-                for ringer in sorted(towers_by_ringers.keys()):
-                    print(ringer, "rang at", towers_by_ringers[ringer])
-            counters_by_ringer = {ringer: collections.Counter(towers_by_ringers[ringer])
-                                  for ringer in sorted(towers_by_ringers.keys())}
-            if verbose:
-                for ringer in sorted(counters_by_ringer.keys()):
-                    print(ringer, "tower counts", counters_by_ringer[ringer])
-            main_towers_by_ringer = {ringer: counters_by_ringer[ringer].most_common(1)[0][0] for ringer in counters_by_ringer.keys()}
-            if verbose:
-                for ringer in sorted(main_towers_by_ringer.keys()):
-                    print(ringer, "rang most at", main_towers_by_ringer[ringer])
-            towers_by_most_popular = collections.Counter(main_towers_by_ringer.values())
+                for ringer in sorted(rang_most_at.keys()):
+                    print(ringer, "rang most at", rang_most_at[ringer])
+            towers_by_most_popular = collections.Counter(rang_most_at.values())
             print("How many people rang most frequently at each tower:")
             for tower in towers_by_most_popular.most_common():
-                print("  ", tower)
+                print("  ", tower[0], tower[1])
+        performance_places = list_tower_performances(by_tower(data))
+        print_tower_performances(performance_places)
     else:
         for p in data:
             print(p)
+
+def main_towers_by_ringer(counts):
+    """Return a dictionary binding ringer names to the towers they rang at most."""
+    return {ringer: rang.most_common(1)[0][0] for ringer, rang in counts.items()}
+
+def tower_counts_by_ringers(data):
+    """Return a dictionary binding ringer names to Counters of how many times they rang at each tower."""
+    towers_by_ringers = collections.defaultdict(list)
+    for performance in data:
+        for ringer in performance.by_ringer.keys():
+            towers_by_ringers[ringer].append(performance.place)
+    return {ringer: collections.Counter(towers_by_ringers[ringer])
+            for ringer in towers_by_ringers.keys()}
 
 if __name__ == "__main__":
     main(**get_args())
