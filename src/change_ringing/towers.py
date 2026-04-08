@@ -40,9 +40,10 @@ def read_dove():
     """
     download_dove()
     dove = collections.defaultdict(list)
-    for tower in csv.DictReader(dovestream):
-        for name in tower_names(tower):
-            if (tower['RingType'] == 'Full-circle ring'
-                and tower['Bells'] != "1"):
-                dove[name].append(tower)
+    with open(DOVE_FILE) as dovestream:
+        for tower in csv.DictReader(dovestream):
+            for name in tower_names(tower):
+                if (tower['RingType'] == 'Full-circle ring'
+                    and tower['Bells'] != "1"):
+                    dove[name].append(tower)
     return dove
