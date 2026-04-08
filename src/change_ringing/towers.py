@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import collections
 import csv
 import os
 
@@ -30,15 +31,18 @@ def download_dove():
             print("Failed to fetch Dove data")
 
 def read_dove():
-    """Read the Dove data as a dictionary.
+    """Read the Dove data as a dictionary of lists.
 
-    Each tower appears under multiple names, as returned by the function `tower_names`."""
+    Each tower appears under multiple names, as returned by the function `tower_names`.
+
+    Each entry is a list of towers with that name (so you can tell
+    whether you need more information for disambiguation).
+    """
     download_dove()
-    with open(DOVE_FILE) as dovestream:
-        return {
-            name: tower
-            for tower in csv.DictReader(dovestream)
-            for name in tower_names(tower)
+    dove = collections.defaultdict(list)
+    for tower in csv.DictReader(dovestream):
+        for name in tower_names(tower):
             if (tower['RingType'] == 'Full-circle ring'
-                and tower['Bells'] != "1")
-        }
+                and tower['Bells'] != "1"):
+                dove[name].append(tower)
+    return dove
